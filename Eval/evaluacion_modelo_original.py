@@ -45,10 +45,6 @@ for row in data:
     Responde unicamente con 'Verdadero', 'Falso' o 'No lo sé' a la siguiente afirmación sobre la realidad chilena en 2023: 
     
     {pregunta}"""
-    # Invocar al modelo LLM para obtener la respuesta
-    #    input_text = f"Responde 
-    #    con 'Verdadero' o 'Falso' a la siguiente pregunta: 
-    #    {pregunta}"
     print(input_text)
     break
     respuesta_modelo = llm.invoke(input_text).strip().lower()
