@@ -1,0 +1,9 @@
+milvus
+pymilvus
+langchain
+python-dotenv
+openai
+sentence-transformers
+langchainhub
+langchain-together
+python-dotenv
