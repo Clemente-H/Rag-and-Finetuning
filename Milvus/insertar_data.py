@@ -8,7 +8,11 @@ from pymilvus import MilvusClient, connections, FieldSchema, CollectionSchema, D
 import json
 import re
 import argparse
+import os.path
+from dotenv import load_dotenv
 
+# Carga las variables de entorno desde el archivo .env
+load_dotenv()
 # Configurar el analizador de argumentos
 parser = argparse.ArgumentParser(description='Insertar datos en Milvus')
 parser.add_argument('--file', type=str, required=True, help='Ruta del archivo CSV a procesar')
@@ -89,7 +93,10 @@ data_list = expanded_df.to_dict(orient='records')
 # Crear el diccionario final con la clave 'rows'
 final_structure = {'rows': data_list}
 
-ruta_archivo = './Data/embeddings/2020_embedding_upload.json'
+# Obtener el nombre del archivo sin la extensión
+filename = os.path.splitext(os.path.basename(rute))[0]
+ruta_archivo = f'../Data/{filename}_embeddings.json'
+
 with open(ruta_archivo, 'w', encoding='utf-8') as file:
     json.dump(final_structure, file, ensure_ascii=False, indent=None)
 
@@ -110,14 +117,14 @@ connections.connect(
     # API key or a colon-separated cluster username and password
     token=os.getenv("MILVUS_API_KEY")
 )
-
+print(os.getenv("MILVUS_API_KEY"))
 # Definimos el tamaño del bloque
-block_size = 10000
+block_size = 1000
 
 # Iteramos sobre los bloques
 for i in range(0, len(data['rows']), block_size):
     res = client.insert(
-        collection_name='News_2020',
+        collection_name='News_2023',
         data=data['rows'][i:i + block_size]
     )
     print('Insertando bloque ' + str(i))
