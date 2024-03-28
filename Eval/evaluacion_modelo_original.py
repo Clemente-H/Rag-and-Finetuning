@@ -2,6 +2,7 @@ import csv
 from langchain_together import Together
 import os
 from dotenv import load_dotenv
+import time
 
 # Carga las variables de entorno desde el archivo .env
 load_dotenv()
@@ -45,10 +46,9 @@ for row in data:
     Responde unicamente con 'Verdadero', 'Falso' o 'No lo sé' a la siguiente afirmación sobre la realidad chilena en 2023: 
     
     {pregunta}"""
-    print(input_text)
-    break
     respuesta_modelo = llm.invoke(input_text).strip().lower()
-
+    time.sleep(1)
+    print(respuesta_modelo)
     # Verificar si la respuesta es correcta
     if respuesta_modelo == respuesta_correcta.lower():
         correctas += 1
@@ -58,11 +58,11 @@ for row in data:
     respuestas_modelo.append(respuesta_modelo)
 
 # Crear un nuevo archivo CSV con las respuestas del modelo
-output_file = '../Data/respuestas_preguntas_noticias_santiago.csv'
+output_file = '../Data/respuestas_preguntas_noticias_santiago_base_model.csv'
 with open(output_file, 'w', newline='') as file:
     writer = csv.writer(file)
     for i, row in enumerate(data):
-        writer.writerow(row + [respuestas_modelo[i]])
+        writer.writerow([row[0], row[1], respuestas_modelo[i]])
 
 # Calcular el puntaje
 puntaje = correctas / total * 100

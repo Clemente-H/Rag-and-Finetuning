@@ -1,2 +1,3 @@
-Data/
+./Data/2023_cleaned_embeddings.json
+./Data/2023_cleaned.csv
 .env
