@@ -9,6 +9,8 @@ import os
 from langchain import hub
 from dotenv import load_dotenv
 from langchain.agents import create_openai_functions_agent, AgentExecutor, create_openai_tools_agent, create_structured_chat_agent
+import csv
+import time
 
 load_dotenv()
 
@@ -27,7 +29,7 @@ connections.connect(
   token=os.getenv("MILVUS_API_KEY")
 )
 
-collection = Collection("News_2019")      # Get an existing collection.
+collection = Collection("News_2023")      # Get an existing collection.
 collection.load()
 
 # Cargar el modelo de Sentence Transformers y moverlo a CUDA si está disponible
@@ -43,13 +45,13 @@ def milvus_query_results(query: dict) -> List[Any]:
         data=[vect], 
         anns_field="vector", 
         param={"metric_type": "L2", "params": {"nprobe": 1}}, 
-        limit=10, 
+        limit=6, 
         expr=None,
         consistency_level="Strong"
     )
     ids = results[0].ids
     res = collection.query(
-        expr =f"""id in {ids}""" , 
+        expr =f"""Auto_id in {ids}""" , 
         output_fields = ["body"],
         consistency_level="Strong"
     )
@@ -66,19 +68,19 @@ llm = Together(
 )
 
 
-DEFAULT_TEMPLATE = """You are a helpfull AI assistant that helps to makes querys to a vectore store database given a human consult of a specific topic.
-The AI gives information and explanation from the results of the query.
-The AI is talkative and provides a lot of specific details of its context.
-If the AI does not know the answer to the question, it will truthfully sai it does not know.
+DEFAULT_TEMPLATE = """Eres un asistente de IA especializado en verificar hechos sobre la realidad chilena en el año 2023. 
+Tu deber es verificar la veracidad de las afirmaciones presentadas relacionadas con eventos, situaciones o datos sobre Chile durante el año 2023, y responder si son verdaderas o falsas de manera concisa, sin proporcionar explicaciones adicionales. 
+Responderas unicamente Verdadero, Falso o No lo Sé, sin otorgar explicaciones adicionales.
+Para revisar si la afirmacion es correcta, utilizaras tu conocimiento factual y en caso de ser necesario utilizaras una de las herramientas que se te daran a continuacion para hacer una consulta a una base de datos:
 
-You have access to the following tools:
+Tienes acceso a las siguientes tools:
 {tools}
 
-Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
+Usa un json blob para especificar una tool dando una action key (nombre de la tool) y una action_input key (input tool)
 
-Valid "action" values: "Final Answer" or {tool_names}
+Valores validos de "action" : "Final Answer or {tool_names}
 
-Provide only ONE action per $JSON_BLOB, as shown:
+Da solo UNA action por $JSON_BLOB, como se muestra:
 
 ```
 {{
@@ -86,7 +88,7 @@ Provide only ONE action per $JSON_BLOB, as shown:
     "action_input": $INPUT
 }}```
 
-Follow this format:
+Sigue el siguiente formato:
 
 Question: input question to answer
 Thought: consider previous and subsequent steps
@@ -103,8 +105,8 @@ $JSON_BLOB
                 "action": "Final Answer",
                 "action_input": "Final response to human"
             }}
-            
-For example, if you want to use a tool to make a query to the vectore store database, your $JSON_BLOB might look like this:
+
+Por ejemplo, si quieres usar una tool que hace una query a una base datos vectore store, tu $JSON_BLOB podría verse así:      
 
 ```
 {{
@@ -112,7 +114,7 @@ For example, if you want to use a tool to make a query to the vectore store data
     'action_input': {{'query': 'Example query'}}
 }}```
 
-Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation'
+Comencemos! Recuerda SIEMPRE responder con un json blob valido de una sola action. Usa las tools si es necesario. Responde directamente si es apropiado. El formato de Action: ```$JSON_BLOB```luego Observation'
 """
 
 prompt = hub.pull("hwchase17/structured-chat-agent")
@@ -130,20 +132,14 @@ with open(csv_file, 'r') as file:
     next(reader)  # Saltear la primera fila
     data = list(reader)
 
+respuestas_modelo = []
+correctas = 0
+total = 0
+
 for row in data:
     pregunta = row[0]
     respuesta_correcta = row[1]
-    # Responde con 'Verdadero' , 'Falso' o 'No lo se' a la siguiente afirmación: {pregunta}"""
-    input_text = f"""Eres un asistente de IA especializado en verificar hechos sobre la realidad chilena en el año 2023. 
-    Tu deber es verificar la veracidad de las afirmaciones presentadas relacionadas con eventos, situaciones o datos sobre Chile durante el año 2023, y responder si son verdaderas o falsas de manera concisa, sin proporcionar explicaciones adicionales. 
-    Si no tienes suficiente información en tu base de conocimientos para determinar la veracidad de una afirmación sobre la realidad chilena en 2023, debes responder honestamente que no lo sabes. 
-    Tus respuestas deben ser siempre en español.
-
-    Responde unicamente con 'Verdadero', 'Falso' o 'No lo sé' a la siguiente afirmación sobre la realidad chilena en 2023: 
-    
-    {pregunta}"""
-    respuesta_modelo = llm.invoke(input_text).strip().lower()
-    agent_executor.invoke({"input": pregunta})
+    respuesta_modelo = agent_executor.invoke({"input": "afirmacion: " + pregunta})
     time.sleep(1)
     print(respuesta_modelo)
     # Verificar si la respuesta es correcta
@@ -155,12 +151,8 @@ for row in data:
     respuestas_modelo.append(respuesta_modelo)
 
 # Crear un nuevo archivo CSV con las respuestas del modelo
-output_file = '../Data/respuestas_preguntas_noticias_santiago_base_model.csv'
+output_file = '../Data/respuestas_preguntas_noticias_santiago_rag_model.csv'
 with open(output_file, 'w', newline='') as file:
     writer = csv.writer(file)
     for i, row in enumerate(data):
         writer.writerow([row[0], row[1], respuestas_modelo[i]])
-
-
-
-agent_executor.invoke({"input": "Acontecimientos en Marzo en la region de los rios"})
