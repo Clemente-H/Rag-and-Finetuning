@@ -50,6 +50,7 @@ def milvus_query_results(query: dict) -> List[Any]:
         consistency_level="Strong"
     )
     ids = results[0].ids
+    print(ids)
     res = collection.query(
         expr =f"""Auto_id in {ids}""" , 
         output_fields = ["body"],
@@ -121,7 +122,7 @@ prompt = hub.pull("hwchase17/structured-chat-agent")
 prompt[0].prompt.template = DEFAULT_TEMPLATE
 
 agent = create_structured_chat_agent(llm, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True, return_intermediate_steps = True)
 
 # Ruta del archivo CSV con las preguntas y respuestas correctas
 csv_file = '../Data/preguntas_noticias_santiago.csv'
@@ -133,13 +134,16 @@ with open(csv_file, 'r') as file:
     data = list(reader)
 
 respuestas_modelo = []
+pasos_intermedios = []
 correctas = 0
 total = 0
 
 for row in data:
     pregunta = row[0]
     respuesta_correcta = row[1]
-    respuesta_modelo = agent_executor.invoke({"input": "afirmacion: " + pregunta})
+    response = agent_executor.invoke({"input": "afirmacion: " + pregunta})
+    respuesta_modelo = response["output"]
+    intermediate_steps = response["intermediate_steps"]
     time.sleep(1)
     print(respuesta_modelo)
     # Verificar si la respuesta es correcta
@@ -149,9 +153,10 @@ for row in data:
 
     # Agregar la respuesta del modelo a la lista
     respuestas_modelo.append(respuesta_modelo)
+    pasos_intermedios.append(intermediate_steps)
 
 # Crear un nuevo archivo CSV con las respuestas del modelo
-output_file = '../Data/respuestas_preguntas_noticias_santiago_rag_model.csv'
+output_file = '../Data/respuestas_preguntas_noticias_santiago_rag_model2.csv'
 with open(output_file, 'w', newline='') as file:
     writer = csv.writer(file)
     for i, row in enumerate(data):
